@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rocket Prediction Calculator</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#172b3e;background:#f2f5f8;line-height:1.5}*{box-sizing:border-box}body{margin:0}main{max-width:1160px;padding:36px 22px;margin:auto}h1{font-size:clamp(1.8rem,4vw,2.8rem);letter-spacing:-.04em;margin:4px 0}h2{font-size:1.15rem;margin:0 0 16px}p,small{color:#526577}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:.75rem;font-weight:700;color:#23687b}.layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:22px;margin-top:26px}.panel{background:white;border:1px solid #d9e2e9;border-radius:15px;padding:24px}label{display:block;font-weight:650;margin:18px 0 6px}.field{display:flex;border:1px solid #99afbd;border-radius:8px;background:#fff8e6;align-items:center}.field:focus-within{outline:3px solid #338cb944}input{font:inherit;font-size:1.3rem;font-weight:600;width:100%;min-width:0;padding:10px 12px;border:0;background:transparent;color:inherit}input:focus{outline:none}.unit{padding-right:14px;color:#526577}small{display:block;font-size:.8rem;margin-top:7px}button{font:inherit;font-weight:650;color:white;background:#176887;border:0;border-radius:8px;padding:11px 16px;width:100%;margin-top:22px;cursor:pointer}button:hover{background:#104d66}button:focus-visible,summary:focus-visible{outline:3px solid #da931b;outline-offset:3px}.badge{display:inline-block;background:#eaf3f7;border-radius:20px;padding:5px 10px;font-size:.8rem;color:#24596e;margin-top:20px}.metrics{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:12px}.metric{border-left:3px solid #d9e6ed;padding-left:12px}.metric:first-child{border-color:#167d9e}.caption{font-size:.76rem;color:#526577}.value{font-size:clamp(1.25rem,2.7vw,2rem);font-weight:750;letter-spacing:-.035em;white-space:nowrap}.value span{font-size:.85rem;font-weight:400;letter-spacing:0;color:#526577}svg{display:block;width:100%;height:auto;margin-top:16px}.key{display:flex;gap:18px;flex-wrap:wrap;font-size:.78rem;color:#526577}.key b{display:inline-block;width:20px;border-top:3px solid #167d9e;vertical-align:middle;margin-right:6px}.key .coast{border-color:#718494;border-top-style:dashed}#message{font-size:.85rem;min-height:26px}.error{color:#a32323}.details{margin-top:22px;font-size:.9rem}details+details{margin-top:16px}summary{font-weight:650;cursor:pointer}li{margin:7px 0}a{color:#176887;overflow-wrap:anywhere}.table-scroll{max-height:280px;overflow:auto}table{border-collapse:collapse;width:100%;font-size:.85rem}th,td{border-bottom:1px solid #e0e7ed;padding:7px 16px;text-align:right}th{position:sticky;top:0;background:#f1f5f8}footer{font-size:.78rem;color:#647786;margin-top:20px}@media(max-width:800px){main{padding:24px 16px}.layout{grid-template-columns:1fr}.panel{padding:20px}.metrics{gap:8px}.metric{padding-left:8px}}@media print{body{background:white}main{padding:0}button{display:none}.layout{grid-template-columns:260px 1fr}}
+</style>
+</head>
+<body>
+<main>
+<header><div class="eyebrow">Model rocket flight</div><h1>Rocket Prediction Calculator</h1><p>Enter mass and body diameter to predict height above the launch point.</p></header>
+<div class="layout">
+<section class="panel">
+<h2>Your rocket</h2>
+<form id="form" novalidate>
+<label for="mass">Launch-ready mass</label>
+<div class="field"><input id="mass" type="number" min="1" max="10000" step="any" value="60" required aria-describedby="mass-help"><span class="unit">g</span></div>
+<small id="mass-help">Include the motor, recovery system, and all flight hardware.</small>
+<label for="diameter">Body diameter</label>
+<div class="field"><input id="diameter" type="number" min="0.001" max="1" step="any" value="0.025" required aria-describedby="diameter-help"><span class="unit">m</span></div>
+<small id="diameter-help">Outside body diameter, not fin span.<br>Example: 25 mm = 0.025 m.</small>
+<button type="submit">Calculate prediction</button>
+</form>
+<div class="badge">Estes B6 · Original thrust data</div>
+<small>Replace the sample values with your measurements. Results update as you type.</small>
+</section>
+<section class="panel">
+<h2>Predicted flight</h2>
+<div class="metrics" aria-live="polite" aria-atomic="true">
+<div class="metric"><div class="caption">Maximum height</div><div class="value"><output id="meters">—</output> <span>m</span></div></div>
+<div class="metric"><div class="caption">Maximum height</div><div class="value"><output id="feet">—</output> <span>ft</span></div></div>
+<div class="metric"><div class="caption">Time to peak</div><div class="value"><output id="seconds">—</output> <span>s</span></div></div>
+</div>
+<svg id="flight" viewBox="0 0 720 395" role="img" aria-labelledby="flight-title flight-desc"><title id="flight-title">Predicted height versus time</title><desc id="flight-desc">Ascent curve to maximum height.</desc></svg>
+<div class="key"><span><b></b>Powered ascent</span><span><b class="coast"></b>Coast to peak</span></div>
+<p id="message" role="status"></p>
+</section>
+</div>
+<section class="panel details">
+<details open><summary>What this prediction assumes</summary>
+<ul>
+<li><strong>Motor:</strong> the exact 25 time–thrust pairs from A12:B36 in your original spreadsheet. Thrust is interpolated linearly between those points and is zero after 0.857 s.</li>
+<li><strong>Drag coefficient: 0.75.</strong> An estimate for an unfinished, streamlined model rocket. Shape, fins, print layer lines, and surface finish matter; PLA alone does not determine drag.</li>
+<li><strong>Air density: 1.060375672 kg/m³.</strong> Standard-atmosphere estimate at 4,900 ft (1,493.52 m), held constant during flight. Weather changes actual density.</li>
+<li><strong>Flight:</strong> vertical, from rest, in still air. The curve ends at the peak. No recovery deployment is modeled before the peak.</li>
+<li><strong>Mass:</strong> held constant at launch-ready mass. Ignoring fuel mass loss tends to underpredict height.</li>
+</ul>
+</details>
+<details><summary>View the original Estes B6 thrust curve and data</summary>
+<p>Copied directly from the original sheet, without substituting a generic B6 curve. Later zero-thrust rows are represented by zero thrust after burnout.</p>
+<svg id="motor" viewBox="0 0 720 310" role="img" aria-labelledby="motor-title"><title id="motor-title">Original B6 thrust curve: peak 12.149 N at 0.181 s; burnout at 0.857 s.</title></svg>
+<div class="table-scroll"><table><thead><tr><th scope="col">Time (s)</th><th scope="col">Thrust (N)</th></tr></thead><tbody id="data"></tbody></table></div>
+<p id="impulse"></p>
+</details>
+<details><summary>Method and sources</summary>
+<p>Area A = π(d/2)². Drag D = ½ρC<sub>d</sub>Av². Acceleration a = (thrust − drag)/mass − g. Mass is converted from grams to kilograms; g = 9.80665 m/s².</p>
+<p>Fourth-order Runge–Kutta integration uses steps no larger than 0.002 s, aligned to every thrust-data time point. The rocket remains on the pad until thrust exceeds weight. The final step is refined to locate zero upward velocity. This may give a slightly different result from the spreadsheet’s numerical approximation.</p>
+<p>This is a classroom height estimate. It does not calculate stability, launch-rod performance, or recovery behavior. Supported input range: 1–10,000 g and 0.001–1 m; the extremes are outside a typical small model rocket.</p>
+<ul>
+<li><a href="https://docs.google.com/spreadsheets/d/1npJZTW2AMxAxKHLXVuCt_V_fY91iYcOjpLq8Dv75ork/edit" target="_blank" rel="noopener">Original spreadsheet: B6 Rocket Calculations Start</a></li>
+<li><a href="https://www.grc.nasa.gov/www/k-12/airplane/atmosmet.html" target="_blank" rel="noopener">NASA atmosphere model</a>: T = 15.04 − 0.00649h; p = 101.29[(T + 273.1)/288.08]<sup>5.256</sup>; ρ = p/[0.2869(T + 273.1)].</li>
+<li><a href="https://www.nar.org/content.aspx?club_id=114127&amp;module_id=768571&amp;page_id=22" target="_blank" rel="noopener">National Association of Rocketry, February 2026</a>: context for estimating Cd = 0.75 for unfinished model rockets.</li>
+</ul>
+</details>
+</section>
+<footer>Self-contained HTML · Works offline · No installation or account needed.</footer>
+</main>
+<script>
+'use strict';
+// Exact original-sheet values, Sheet1!A12:B36. All later thrust values are zero.
+const THRUST_DATA = [[0,0],[0.036,1.364],[0.064,2.727],[0.082,4.215],[0.111,6.694],[0.135,9.05],[0.146,9.545],[0.172,11.901],[0.181,12.149],[0.191,11.901],[0.211,9.174],[0.239,7.314],[0.264,6.074],[0.275,5.95],[0.333,5.207],[0.394,4.835],[0.445,4.835],[0.556,4.339],[0.667,4.587],[0.723,4.339],[0.78,4.339],[0.793,4.091],[0.812,2.603],[0.833,1.24],[0.857,0]];
+const SETTINGS = Object.freeze({cd:0.75,rho:1.0603756723247457,g:9.80665,step:0.002,maxTime:120});
+const BURNOUT = THRUST_DATA[THRUST_DATA.length-1][0];
+
+function thrustAt(t) {
+  if(t<=0 || t>=BURNOUT) return 0;
+  for(let i=1;i<THRUST_DATA.length;i++) {
+    const [tb,fb]=THRUST_DATA[i], [ta,fa]=THRUST_DATA[i-1];
+    if(t<=tb) return fa+(fb-fa)*(t-ta)/(tb-ta);
+  }
+  return 0;
+}
+
+function simulate(massGrams,diameter,step=SETTINGS.step) {
+  const mass=massGrams/1000, weight=mass*SETTINGS.g;
+  const k=0.5*SETTINGS.rho*SETTINGS.cd*Math.PI*(diameter/2)**2;
+  let liftoff=null;
+  for(let i=1;i<THRUST_DATA.length;i++) {
+    const [ta,fa]=THRUST_DATA[i-1],[tb,fb]=THRUST_DATA[i];
+    if(fb>weight && fb>fa) {
+      liftoff=ta+(weight-fa)*(tb-ta)/(fb-fa);
+      break;
+    }
+  }
+  if(liftoff===null) return {height:0,time:0,points:[{t:0,h:0,v:0}],noLiftoff:true};
+  const acceleration=(t,v)=>(thrustAt(t)-k*v*Math.abs(v))/mass-SETTINGS.g;
+  function advance(t,h,v,dt) {
+    const a1=acceleration(t,v),u1=v;
+    const a2=acceleration(t+dt/2,v+a1*dt/2),u2=v+a1*dt/2;
+    const a3=acceleration(t+dt/2,v+a2*dt/2),u3=v+a2*dt/2;
+    const a4=acceleration(t+dt,v+a3*dt),u4=v+a3*dt;
+    return {h:h+dt*(u1+2*u2+2*u3+u4)/6,v:v+dt*(a1+2*a2+2*a3+a4)/6};
+  }
+  let t=liftoff,h=0,v=0,nextKnot=1;
+  const points=[{t:0,h:0,v:0},{t,h,v}];
+  while(t<SETTINGS.maxTime) {
+    while(nextKnot<THRUST_DATA.length && THRUST_DATA[nextKnot][0]<=t+1e-10) nextKnot++;
+    const knot=nextKnot<THRUST_DATA.length?THRUST_DATA[nextKnot][0]:Infinity;
+    const dragStep=mass/(Math.max(1,v)*Math.max(k,1e-15))*0.05;
+    const dt=Math.min(step,dragStep,knot-t,SETTINGS.maxTime-t);
+    const next=advance(t,h,v,dt);
+    if(!Number.isFinite(next.h)||!Number.isFinite(next.v)) throw Error('These inputs cannot be resolved. Check your units.');
+    if(v>0 && next.v<=0) {
+      let lo=0,hi=dt;
+      for(let j=0;j<35;j++) {
+        const mid=(lo+hi)/2;
+        if(advance(t,h,v,mid).v>0) lo=mid; else hi=mid;
+      }
+      const peakStep=(lo+hi)/2,peak=advance(t,h,v,peakStep);
+      points.push({t:t+peakStep,h:peak.h,v:0});
+      return {height:peak.h,time:t+peakStep,points,noLiftoff:false};
+    }
+    t+=dt;h=next.h;v=next.v;points.push({t,h,v});
+    if(points.length>300000) throw Error('These extreme inputs require too many steps. Check mass and diameter.');
+  }
+  throw Error('No peak found within 120 seconds. Check the inputs.');
+}
+
+const $=id=>document.getElementById(id);
+function element(tag,attrs,text) {
+  const el=document.createElementNS('http://www.w3.org/2000/svg',tag);
+  Object.entries(attrs).forEach(([key,value])=>el.setAttribute(key,value));
+  if(text!==undefined) el.textContent=text;
+  return el;
+}
+function niceMax(n) {
+  const target=Math.max(n,0.001)/5,base=10**Math.floor(Math.log10(target)),units=target/base;
+  return (units<=1?1:units<=2?2:units<=2.5?2.5:units<=5?5:10)*base*5;
+}
+function frame(svg,xMax,yMax,label,height=395) {
+  svg.querySelectorAll('.drawing').forEach(el=>el.remove());
+  const group=element('g',{class:'drawing'});svg.appendChild(group);
+  const left=66,right=696,top=24,bottom=height-60;
+  const x=t=>left+t/xMax*(right-left),y=h=>bottom-h/yMax*(bottom-top);
+  for(let i=0;i<=5;i++) {
+    const yy=y(yMax*i/5),xx=x(xMax*i/5);
+    group.appendChild(element('line',{x1:left,x2:right,y1:yy,y2:yy,stroke:'#e1e8ee'}));
+    group.appendChild(element('text',{x:left-10,y:yy+4,'text-anchor':'end',fill:'#526577','font-size':12},Number((yMax*i/5).toPrecision(4)).toString()));
+    group.appendChild(element('text',{x:xx,y:bottom+23,'text-anchor':'middle',fill:'#526577','font-size':12},Number((xMax*i/5).toPrecision(4)).toString()));
+  }
+  group.appendChild(element('line',{x1:left,x2:right,y1:bottom,y2:bottom,stroke:'#8798a6'}));
+  group.appendChild(element('text',{x:(left+right)/2,y:height-10,'text-anchor':'middle',fill:'#526577','font-size':13},'Time (s)'));
+  group.appendChild(element('text',{transform:'translate(17 '+((top+bottom)/2)+') rotate(-90)','text-anchor':'middle',fill:'#526577','font-size':13},label));
+  return {group,x,y};
+}
+function path(group,points,x,y,color,dashed=false) {
+  if(!points.length) return;
+  const d=points.map((p,i)=>(i?'L':'M')+x(p.t).toFixed(2)+','+y(p.h).toFixed(2)).join(' ');
+  group.appendChild(element('path',{d,fill:'none',stroke:color,'stroke-width':3,'stroke-linecap':'round','stroke-linejoin':'round',...(dashed?{'stroke-dasharray':'7 5'}:{})}));
+}
+function drawFlight(result) {
+  const {group,x,y}=frame($('flight'),niceMax(result.time||1),niceMax(result.height||1),'Height (m)');
+  const stride=Math.max(1,Math.floor(result.points.length/900));
+  const points=result.points.filter((p,i)=>i%stride===0 || i===result.points.length-1 || Math.abs(p.t-BURNOUT)<1e-9);
+  path(group,points.filter(p=>p.t<=BURNOUT+1e-9),x,y,'#167d9e');
+  path(group,points.filter(p=>p.t>=BURNOUT-1e-9),x,y,'#718494',true);
+  if(!result.noLiftoff) {
+    const px=x(result.time),py=y(result.height);
+    group.appendChild(element('circle',{cx:px,cy:py,r:5,fill:'#167d9e',stroke:'white','stroke-width':2}));
+    group.appendChild(element('text',{x:px-9,y:Math.max(16,py-13),'text-anchor':'end',fill:'#24596e','font-size':12},'Peak: '+result.height.toFixed(1)+' m'));
+  }
+  $('flight-desc').textContent=result.noLiftoff?'No liftoff predicted.':'Height rises to '+result.height.toFixed(1)+' meters at '+result.time.toFixed(2)+' seconds.';
+}
+function update() {
+  const mass=$('mass').valueAsNumber,diameter=$('diameter').valueAsNumber;
+  const badMass=!Number.isFinite(mass)||mass<1||mass>10000;
+  const badDiameter=!Number.isFinite(diameter)||diameter<0.001||diameter>1;
+  $('mass').setAttribute('aria-invalid',String(badMass));
+  $('diameter').setAttribute('aria-invalid',String(badDiameter));
+  try {
+    if(badMass||badDiameter) throw Error('Enter mass from 1 to 10,000 g and diameter from 0.001 to 1 m.');
+    const result=simulate(mass,diameter);
+    $('meters').textContent=result.height.toFixed(1);
+    $('feet').textContent=(result.height/0.3048).toFixed(1);
+    $('seconds').textContent=result.time.toFixed(2);
+    $('message').className='';
+    $('message').textContent=result.noLiftoff?'No liftoff predicted: peak motor thrust does not exceed the rocket’s weight.':'Height above launch point. The curve ends at the peak; descent and recovery are not modeled.';
+    drawFlight(result);
+  } catch(error) {
+    ['meters','feet','seconds'].forEach(id=>$(id).textContent='—');
+    frame($('flight'),1,1,'Height (m)');
+    $('flight-desc').textContent='No prediction. Correct the inputs.';
+    $('message').className='error';$('message').textContent=error.message;
+  }
+}
+function initialize() {
+  $('form').addEventListener('submit',event=>{event.preventDefault();update();});
+  ['mass','diameter'].forEach(id=>$(id).addEventListener('input',update));
+  THRUST_DATA.forEach(pair=>{
+    const row=document.createElement('tr');
+    pair.forEach(value=>{const td=document.createElement('td');td.textContent=value.toFixed(3);row.appendChild(td);});
+    $('data').appendChild(row);
+  });
+  const impulse=THRUST_DATA.slice(1).reduce((sum,p,i)=>sum+(p[0]-THRUST_DATA[i][0])*(p[1]+THRUST_DATA[i][1])/2,0);
+  $('impulse').textContent='Integrated impulse of the supplied curve: '+impulse.toFixed(3)+' N·s. Burnout: '+BURNOUT.toFixed(3)+' s.';
+  const {group,x,y}=frame($('motor'),1,15,'Thrust (N)',310);
+  path(group,THRUST_DATA.map(([t,h])=>({t,h})),x,y,'#167d9e');
+  THRUST_DATA.forEach(([t,h])=>group.appendChild(element('circle',{cx:x(t),cy:y(h),r:3,fill:'#167d9e'})));
+  update();
+}
+initialize();
+</script>
+</body>
+</html>
